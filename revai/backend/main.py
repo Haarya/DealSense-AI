@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 from models import Base
-from api import auth, crm, integrations, dashboard, deals, prospects, tasks
+from api import auth, crm, integrations, dashboard, deals, prospects, tasks, competitive
+from scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="RevAI API")
 
@@ -21,6 +22,7 @@ app.include_router(dashboard.router)
 app.include_router(deals.router)
 app.include_router(prospects.router)
 app.include_router(tasks.router)
+app.include_router(competitive.router)
 
 @app.on_event("startup")
 async def startup_event():
@@ -30,6 +32,14 @@ async def startup_event():
             await conn.run_sync(Base.metadata.create_all)
     except Exception as exc:
         print(f"[startup] Database unavailable, continuing without init: {exc}")
+
+    # Start background scheduler for periodic deal intelligence runs.
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    stop_scheduler()
 
 @app.get("/")
 def read_root():
