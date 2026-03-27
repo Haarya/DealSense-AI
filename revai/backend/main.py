@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 from models import Base
-from api import auth, crm, integrations, dashboard, deals, competitive
+from api import auth, crm, integrations, dashboard, deals, prospects, tasks, competitive
 from scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="RevAI API")
@@ -20,6 +20,8 @@ app.include_router(crm.router)
 app.include_router(integrations.router)
 app.include_router(dashboard.router)
 app.include_router(deals.router)
+app.include_router(prospects.router)
+app.include_router(tasks.router)
 app.include_router(competitive.router)
 
 @app.on_event("startup")
