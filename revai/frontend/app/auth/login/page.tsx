@@ -5,14 +5,37 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const GUEST_EMAIL = 'guest@dealsense.local';
+  const GUEST_PASSWORD = 'guest-mode';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleBypass = () => {
-    router.push('/dashboard/overview?bypass=1');
+  const handleGuestLogin = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const res = await signIn('credentials', {
+        redirect: false,
+        email: GUEST_EMAIL,
+        password: GUEST_PASSWORD,
+      });
+
+      if (res?.error) {
+        setError('Guest mode is temporarily unavailable');
+      } else {
+        router.push('/dashboard/overview?bypass=1');
+        router.refresh();
+      }
+    } catch {
+      setError('Unable to start guest mode right now');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,10 +107,11 @@ export default function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={handleBypass}
+            onClick={handleGuestLogin}
+            disabled={isLoading}
             className="w-full bg-elevated border border-border text-white font-semibold py-2 px-4 rounded-md hover:border-cyan hover:text-cyan transition-colors"
           >
-            Quick Test Bypass
+            Continue As Guest
           </button>
         </form>
       </div>

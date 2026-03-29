@@ -8,12 +8,19 @@ try:
 except ImportError:
     pass
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://revai:password@postgres:5432/revai")
-# If using psycopg2 driver in URL, update to asyncpg
-if DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+default_db_url = "postgresql+asyncpg://revai:password@postgres:5432/revai"
+database_url = os.getenv("DATABASE_URL", default_db_url)
+supabase_direct_url = os.getenv("SUPABASE_DIRECT_URL", "")
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+# Prefer Supabase direct URL only when it has a real password.
+if supabase_direct_url and "[YOUR-PASSWORD]" not in supabase_direct_url:
+    database_url = supabase_direct_url
+
+# If using psycopg2 driver in URL, update to asyncpg
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+engine = create_async_engine(database_url, echo=False)
 
 AsyncSessionLocal = sessionmaker(
     bind=engine,

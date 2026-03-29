@@ -1,6 +1,9 @@
 import NextAuth, { type DefaultSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
+const GUEST_EMAIL = 'guest@dealsense.local';
+const GUEST_PASSWORD = 'guest-mode';
+
 const getAuthApiCandidates = () => {
   const candidates = [
     process.env.BACKEND_INTERNAL_URL,
@@ -36,6 +39,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        if (credentials.email === GUEST_EMAIL && credentials.password === GUEST_PASSWORD) {
+          return {
+            id: 'guest-user',
+            name: 'Guest User',
+            email: GUEST_EMAIL,
+            org_id: 'guest-org',
+            role: 'guest',
+            accessToken: 'guest-mode-token',
+          };
+        }
 
         try {
           for (const baseUrl of getAuthApiCandidates()) {
