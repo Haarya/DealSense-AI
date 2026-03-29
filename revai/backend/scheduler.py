@@ -9,8 +9,10 @@ from sqlalchemy import select
 from database import AsyncSessionLocal
 from models.battlecard import Battlecard
 from models.deal import Deal
+from models.account import Account
 from agents.competitive_agent import run_competitive_agent
 from agents.deal_intelligence_agent import analyze_deal
+from agents.retention_agent import run_retention_agent
 
 try:
     AsyncIOScheduler = import_module("apscheduler.schedulers.asyncio").AsyncIOScheduler
@@ -73,6 +75,26 @@ async def run_competitive_intel_for_tracked_competitors(org_id: str | None = Non
     return {"processed": processed, "failed": failed}
 
 
+async def run_retention_intel_for_all_accounts(org_id: str | None = None) -> dict[str, Any]:
+    analyzed = 0
+    failed = 0
+
+    async with AsyncSessionLocal() as db:
+        stmt = select(Account)
+        if org_id:
+            stmt = stmt.where(Account.org_id == org_id)
+
+        accounts = (await db.execute(stmt)).scalars().all()
+
+        for account in accounts:
+            try:
+                await run_retention_agent(str(account.id), str(account.org_id))
+                analyzed += 1
+            except Exception:
+                failed += 1
+
+    return {"analyzed": analyzed, "failed": failed}
+
 def start_scheduler() -> Any:
     global _scheduler
 
@@ -91,11 +113,22 @@ def start_scheduler() -> Any:
     def _enqueue_competitive_job() -> None:
         asyncio.create_task(run_competitive_intel_for_tracked_competitors())
 
+    def _enqueue_retention_job() -> None:
+        asyncio.create_task(run_retention_intel_for_all_accounts())
+
     _scheduler.add_job(
         _enqueue_job,
         trigger="interval",
         hours=6,
         id="deal_intelligence_every_6h",
+        replace_existing=True,
+    )
+    
+    _scheduler.add_job(
+        _enqueue_retention_job,
+        trigger="interval",
+        hours=24,
+        id="retention_intelligence_daily",
         replace_existing=True,
     )
     _scheduler.add_job(
